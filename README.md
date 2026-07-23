@@ -16,4 +16,4 @@ Uses reusable workflows from [ci-templates](https://github.com/guilhermelinosp/c
 
 ## License
 
-[MIT](LICENSE)
+[Apache 2.0](LICENSE)
