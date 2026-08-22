@@ -27,21 +27,21 @@ func main() {
 		workerLoop(ctx)
 	}()
 
-	fmt.Println("worker started")
+	_, _ = fmt.Println("worker started")
 
 	select {
 	case <-sig:
-		fmt.Println("shutdown signal received, stopping worker...")
+		_, _ = fmt.Println("shutdown signal received, stopping worker...")
 		cancel()
 	case <-done:
-		fmt.Println("worker finished")
+		_, _ = fmt.Println("worker finished")
 	}
 
 	// Wait for worker to clean up.
 	select {
 	case <-done:
 	case <-time.After(10 * time.Second):
-		fmt.Fprintln(os.Stderr, "worker shutdown timed out")
+		_, _ = fmt.Fprintln(os.Stderr, "worker shutdown timed out")
 	}
 }
 
@@ -52,17 +52,17 @@ func workerLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Println("worker loop exiting")
+			_, _ = fmt.Println("worker loop exiting")
 			return
 		case t := <-ticker.C:
 			if err := doWork(t); err != nil {
-				fmt.Fprintf(os.Stderr, "work error: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "work error: %v\n", err)
 			}
 		}
 	}
 }
 
 func doWork(t time.Time) error {
-	fmt.Printf("tick at %s\n", t.Format(time.RFC3339))
+	_, _ = fmt.Printf("tick at %s\n", t.Format(time.RFC3339))
 	return nil
 }
