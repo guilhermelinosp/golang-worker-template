@@ -6,42 +6,56 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/guilhermelinosp/hellnet-lib-telemetry/telemetry"
 )
 
+// tel holds the observability instance. It is nil when main is not executed
+// (e.g. during unit tests), in which case jobs run without instrumentation.
+var tel *telemetry.Telemetry
+
 func main() {
+	ops, err := telemetry.New(telemetry.Options{
+		ServiceName: "golang-worker-template",
+		Enabled:     os.Getenv("HELLNET_TELEMETRY_ENABLED") == "true",
+	})
+	if err != nil {
+		log.Fatalf("failed to init telemetry: %v", err)
+	}
+	tel = ops
+	defer func() { _ = tel.Shutdown() }()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Handle OS signals for graceful shutdown.
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 
-	// Start worker loop.
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		workerLoop(ctx)
 	}()
 
-	_, _ = fmt.Println("worker started")
+	tel.Log().Info("worker started")
 
 	select {
 	case <-sig:
-		_, _ = fmt.Println("shutdown signal received, stopping worker...")
+		tel.Log().Info("shutdown signal received, stopping worker")
 		cancel()
 	case <-done:
-		_, _ = fmt.Println("worker finished")
+		tel.Log().Info("worker finished")
 	}
 
-	// Wait for worker to clean up.
 	select {
 	case <-done:
 	case <-time.After(10 * time.Second):
-		_, _ = fmt.Fprintln(os.Stderr, "worker shutdown timed out")
+		tel.Log().Error("worker shutdown timed out")
 	}
 }
 
@@ -52,14 +66,24 @@ func workerLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			_, _ = fmt.Println("worker loop exiting")
+			if tel != nil {
+				tel.Log().Info("worker loop exiting")
+			}
 			return
 		case t := <-ticker.C:
-			if err := doWork(t); err != nil {
-				_, _ = fmt.Fprintf(os.Stderr, "work error: %v\n", err)
-			}
+			runJob(ctx, t)
 		}
 	}
+}
+
+// runJob executes one tick of work with observability (when tel is available).
+func runJob(ctx context.Context, t time.Time) {
+	do := func(c context.Context) error { return doWork(t) }
+	if tel != nil {
+		_ = tel.Worker(ctx, "tick", do)
+		return
+	}
+	_ = do(ctx)
 }
 
 func doWork(t time.Time) error {
