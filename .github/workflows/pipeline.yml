@@ -1,13 +1,31 @@
 name: pipeline
-on: { push: { branches: [main] } }
+
+# Fully abstracted: every job is an import from ci-templates.
+# Flow on push to main:
+#   release (semver tag + GH Release)
+#     → go-build (tidy/vet/lint/build/test with cache)
+#     → go-quality (govulncheck; dependency-review skips outside PRs)
+#     → image (buildah → GHCR)
+
+on:
+  push:
+    branches: [main]
+
 permissions: write-all
+
 jobs:
   release:
     uses: guilhermelinosp/ci-templates/.github/workflows/release.yml@main
     secrets: inherit
+
   build:
     needs: [release]
     uses: guilhermelinosp/ci-templates/.github/workflows/go-build.yml@main
+
+  quality:
+    needs: [build]
+    uses: guilhermelinosp/ci-templates/.github/workflows/govulncheck.yml@main
+
   image:
     needs: [build]
     uses: guilhermelinosp/ci-templates/.github/workflows/buildah.yml@main
