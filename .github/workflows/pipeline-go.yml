@@ -1,0 +1,35 @@
+name: pipeline
+
+# Fully abstracted: every job is an import from ci-templates.
+# Flow on push to main:
+#   release (semver tag + GH Release)
+#     → go-quality (tidy/vet/race tests/build/lint/govulncheck; dep-review skips on push)
+#     → goreleaser-publish (binaries + checksums onto the tag's release)
+#     → image (buildah → GHCR)
+
+on:
+  push:
+    branches: [main]
+
+permissions: write-all
+
+jobs:
+  release:
+    uses: guilhermelinosp/ci-templates/.github/workflows/release.yml@main
+    secrets: inherit
+
+  quality:
+    needs: [release]
+    uses: guilhermelinosp/ci-templates/.github/workflows/go-quality.yml@main
+    with:
+      go-version-file: go.mod
+
+  binaries:
+    needs: [release]
+    uses: guilhermelinosp/ci-templates/.github/workflows/goreleaser-publish.yml@main
+    permissions:
+      contents: write
+
+  image:
+    needs: [quality, binaries]
+    uses: guilhermelinosp/ci-templates/.github/workflows/buildah.yml@main
