@@ -9,6 +9,8 @@ Thumbs.db
 *.swo
 
 # Build
+/worker
+worker.exe
 bin/
 obj/
 dist/
