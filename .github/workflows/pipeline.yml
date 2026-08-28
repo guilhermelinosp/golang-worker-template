@@ -1,15 +1,15 @@
 name: pipeline
 
-# Fully abstracted: every job is an import from ci-templates.
-# Flow on push to main:
+# Fully abstracted: every job is an import from templates.
+# Triggered manually (workflow_dispatch) so a publish only happens on demand
+# and never re-publishes an existing goreleaser tag:
 #   release (semver tag + GH Release)
 #     → go-build (tidy/vet/lint/build/test with cache)
 #     → go-quality (govulncheck; dependency-review skips outside PRs)
 #     → image (buildah → GHCR)
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions: write-all
 
