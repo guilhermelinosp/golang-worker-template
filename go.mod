@@ -1,6 +1,6 @@
 module github.com/guilhermelinosp/golang-worker-template
 
-go 1.26
+go 1.27.0
 
 require github.com/guilhermelinosp/hellnet-lib-telemetry v1.2.7
 
